@@ -60,3 +60,23 @@ action do_reset_rtt_probe_reg() {
 action do_calc_rtt_val() {
     meta.rtt_val = calc_rtt_val.execute(meta.hash_10);
 }
+
+Register<bit<32>, bit<10>>(1024) rtt_interval_reg; 
+RegisterAction<bit<32>, bit<10>, bit<32>>(rtt_interval_reg) reset_rtt_interval_reg_action = {
+    void apply(inout bit<32> reg, out bit<32> timestamp) {
+        reg = ig_intr_md.ingress_mac_tstamp[31:0];
+        timestamp = reg;
+    }
+};
+RegisterAction<bit<32>, bit<10>, bit<32>>(rtt_interval_reg) read_rtt_interval_reg_action = {
+    void apply(inout bit<32> reg, out bit<32> timestamp) {
+        reg = ig_intr_md.ingress_mac_tstamp[31:0];
+        timestamp = reg;
+    }
+};
+action do_read_rtt_probe_reg() {
+    meta.rtt_timestamp1 = read_rtt_interval_reg_action.execute(meta.hash_10);
+}
+action do_reset_rtt_probe_reg() {
+    meta.rtt_timestamp1 = reset_rtt_interval_reg_action.execute(meta.hash_10);
+}

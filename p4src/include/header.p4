@@ -198,6 +198,7 @@ struct my_ingress_metadata_t {
     pkt_type_t  pkt_type;
     bit<32>     rtt_val;
     bit<32>     rtt_timestamp0;
+    bit<32>     rtt_timestamp1;
     MirrorId_t  rtt_mirror_session;
     bit<1>      bypass;
 
@@ -244,6 +245,7 @@ struct rtt_digest_t {
     //debug filed
     bit<16>     debug_val2;
 }
+
 struct port_reg_t {
     bit<32>     timestamp;
     bit<32>     congest_stat;

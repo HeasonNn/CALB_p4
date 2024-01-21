@@ -172,6 +172,14 @@ control Ingress(
         size = 64;
     }
 
+    table read_rtt_interval_reg {
+        actions = {
+            do_read_rtt_probe_reg;
+        }
+        size = 1;
+        const default_action = do_read_rtt_probe_reg;    
+    }
+
     apply {
         if(hdr.ipv4.isValid()) {
 
@@ -212,12 +220,14 @@ control Ingress(
 
                     // SrcToR: 
                     if(meta.device_type == DEVICE_TYPE_SRC && !hdr.rtt_probe.isValid()) {
-                        init_rtt_probe.apply();
-                        meta.rtt_timestamp0 = ig_intr_md.ingress_mac_tstamp[31:0];
-                        hdr.rtt_probe.setValid();
-                        hdr.rtt_probe.rtt_type = 1;
-                        hdr.rtt_probe.pad0 = 0;
-                        hdr.rtt_probe.rtt_opt = RTT_OPT_ECHO;
+                        if(ig_intr_md.ingress_mac_tstamp[31:0] - meta.rtt_timestamp0 > 32w2000000000) {
+                            init_rtt_probe.apply();
+                            meta.rtt_timestamp0 = ig_intr_md.ingress_mac_tstamp[31:0];
+                            hdr.rtt_probe.setValid();
+                            hdr.rtt_probe.rtt_type = 1;
+                            hdr.rtt_probe.pad0 = 0;
+                            hdr.rtt_probe.rtt_opt = RTT_OPT_ECHO;
+                        }
                     }
 
                     // DstToR
@@ -227,6 +237,7 @@ control Ingress(
                                 bit<32> rtt_hash;
                                 calc_rtt_hash.apply(hdr, rtt_hash);
                                 meta.hash_10 = rtt_hash[9:0];
+                                
                                 read_rtt_reg.apply();
                                 meta.rtt_val = ig_intr_md.ingress_mac_tstamp[31:0] - meta.rtt_timestamp0;
                                 ig_dprsr_md.digest_type = RTT_DIGEST;

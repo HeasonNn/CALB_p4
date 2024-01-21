@@ -190,4 +190,4 @@ except:
 finally:
     print("Deregistering old digest callback (if any)")
 p4_digest.rtt_digest.callback_register(rtt_digest_cb)
-print("Feedback_digest callback registered")
+print("rtt_digest callback registered")
