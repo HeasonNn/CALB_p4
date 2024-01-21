@@ -196,6 +196,7 @@ struct my_ingress_metadata_t {
 
     // rtt filed
     pkt_type_t  pkt_type;
+    bit<1>      gen_rtt_probe;
     bit<32>     rtt_val;
     bit<32>     rtt_timestamp0;
     bit<32>     rtt_timestamp1;

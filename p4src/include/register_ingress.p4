@@ -68,15 +68,20 @@ RegisterAction<bit<32>, bit<10>, bit<32>>(rtt_interval_reg) reset_rtt_interval_r
         timestamp = reg;
     }
 };
-RegisterAction<bit<32>, bit<10>, bit<32>>(rtt_interval_reg) read_rtt_interval_reg_action = {
-    void apply(inout bit<32> reg, out bit<32> timestamp) {
-        reg = ig_intr_md.ingress_mac_tstamp[31:0];
-        timestamp = reg;
+RegisterAction<bit<32>, bit<10>, bit<1>>(rtt_interval_reg) read_rtt_interval_reg_action = {
+    void apply(inout bit<32> reg, out bit<1> result) {
+        if(ig_intr_md.ingress_mac_tstamp[31:0] - reg > 32w2000000000){
+            reg = ig_intr_md.ingress_mac_tstamp[31:0];
+            result = 1;
+        }
+        else{
+            result = 0;
+        }
     }
 };
-action do_read_rtt_probe_reg() {
-    meta.rtt_timestamp1 = read_rtt_interval_reg_action.execute(meta.hash_10);
-}
-action do_reset_rtt_probe_reg() {
+action do_reset_rtt_interval_reg() {
     meta.rtt_timestamp1 = reset_rtt_interval_reg_action.execute(meta.hash_10);
+}
+action do_read_rtt_interval_reg() {
+    meta.gen_rtt_probe = read_rtt_interval_reg_action.execute(meta.hash_10);
 }

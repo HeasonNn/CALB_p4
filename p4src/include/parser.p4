@@ -24,6 +24,7 @@ parser IngressParser(
         meta.hash_10        = 0;
 
         meta.pkt_type       = 0;
+        meta.gen_rtt_probe  = 0;
         meta.rtt_val        = 0;
         meta.rtt_timestamp0 = 0;
         meta.bypass         = 0;

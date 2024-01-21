@@ -174,10 +174,10 @@ control Ingress(
 
     table read_rtt_interval_reg {
         actions = {
-            do_read_rtt_probe_reg;
+            do_read_rtt_interval_reg;
         }
         size = 1;
-        const default_action = do_read_rtt_probe_reg;    
+        const default_action = do_read_rtt_interval_reg;    
     }
 
     apply {
@@ -220,7 +220,8 @@ control Ingress(
 
                     // SrcToR: 
                     if(meta.device_type == DEVICE_TYPE_SRC && !hdr.rtt_probe.isValid()) {
-                        if(ig_intr_md.ingress_mac_tstamp[31:0] - meta.rtt_timestamp0 > 32w2000000000) {
+                        read_rtt_interval_reg.apply();
+                        if(meta.gen_rtt_probe == 1) {
                             init_rtt_probe.apply();
                             meta.rtt_timestamp0 = ig_intr_md.ingress_mac_tstamp[31:0];
                             hdr.rtt_probe.setValid();
