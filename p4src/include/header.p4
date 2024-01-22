@@ -187,7 +187,6 @@ struct headers_t {
 }
 
 struct my_ingress_metadata_t {
-    bit<1>      ipv4_csum_err;
     PortId_t    ingress_port;
     PortId_t    egress_port;
     feedback_h  feedback;

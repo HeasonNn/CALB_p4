@@ -7,9 +7,7 @@ parser IngressParser(
     out     headers_t                       hdr,
     out     my_ingress_metadata_t           meta,
     out     ingress_intrinsic_metadata_t    ig_intr_md)
-{
-    Checksum() ipv4_checksum;
-    
+{    
     state start {
         pkt.extract(ig_intr_md);
         pkt.advance(PORT_METADATA_SIZE);
@@ -17,7 +15,6 @@ parser IngressParser(
     }
 
     state meta_init {
-        meta.ipv4_csum_err  = 0;
         meta.ingress_port   = ig_intr_md.ingress_port;
         meta.egress_port    = 100; // Select an unused port as the initial value of egress_port
         meta.device_type    = 0;
@@ -55,8 +52,6 @@ parser IngressParser(
 
     state parse_ipv4 {
         pkt.extract(hdr.ipv4);
-        ipv4_checksum.add(hdr.ipv4);
-        meta.ipv4_csum_err = (bit<1>)ipv4_checksum.verify();
         transition parse_tcp;
     }
 
@@ -85,7 +80,6 @@ control IngressDeparser(
     in      my_ingress_metadata_t                       meta,
     in      ingress_intrinsic_metadata_for_deparser_t   ig_dprsr_md)
 {
-    Checksum() ipv4_checksum;
     // Digest <feedback_digest_t>() feedback_digest;
     Digest <rtt_digest_t>() rtt_digest;
     Mirror() rtt_mirror;
@@ -122,21 +116,6 @@ control IngressDeparser(
                 meta.rtt_mirror_session
             });
         }
-
-        hdr.ipv4.hdr_checksum = ipv4_checksum.update({
-            hdr.ipv4.version,
-            hdr.ipv4.ihl,
-            hdr.ipv4.dscp,
-            hdr.ipv4.ecn,
-            hdr.ipv4.total_len,
-            hdr.ipv4.identification,
-            hdr.ipv4.flags,
-            hdr.ipv4.frag_offset,
-            hdr.ipv4.ttl,
-            hdr.ipv4.protocol,
-            hdr.ipv4.src_addr,
-            hdr.ipv4.dst_addr
-        });
 
         // pkt.emit(hdr);
 

@@ -181,80 +181,77 @@ control Ingress(
     }
 
     apply {
-        if(hdr.ipv4.isValid()) {
-
-            // rtt probe pkt redirect
-            if(hdr.rtt_probe.isValid()) {
-                if(redirect_rtt_probe.apply().hit) {
-                    meta.bypass = 1;
-                }
-            }
-
-            // ECMP forward
-            calc_ipv4_hashes.apply(hdr, hash);
-            if (meta.ipv4_csum_err == 0 && hdr.ipv4.ttl > 1) {
-                if (!ipv4_host.apply().hit) {
-                    ipv4_lpm.apply();
-                }
-                nexthop.apply();
-            }
-
-            // generate feedback digest
-            if(hdr.feedback.isValid()) {
-                do_update_port_reg(hdr.feedback.egress_port);
-                ig_dprsr_md.digest_type = FEEDBACK_DIGEST;
+        // rtt probe pkt redirect
+        if(hdr.rtt_probe.isValid()) {
+            if(redirect_rtt_probe.apply().hit) {
                 meta.bypass = 1;
-                drop();
-            } 
-            else {
-                do_check_port_reg(ig_tm_md.ucast_egress_port);
-                if(meta.reg_result == 1) {
-                    opt_nexthop.apply();
-                }
             }
+        }
 
-            // Processing RTT probe packets in SrcToR or DstToR
-            if(meta.bypass == 0) {
-                if(device_type.apply().hit) {
-                    meta.hash_10 = hash[9:0];
+        // ECMP forward
+        calc_ipv4_hashes.apply(hdr, hash);
+        if (hdr.ipv4.ttl > 1) {
+            if (!ipv4_host.apply().hit) {
+                ipv4_lpm.apply();
+            }
+            nexthop.apply();
+        }
 
-                    // SrcToR: 
-                    if(meta.device_type == DEVICE_TYPE_SRC && !hdr.rtt_probe.isValid()) {
-                        read_rtt_interval_reg.apply();
-                        if(meta.gen_rtt_probe == 1) {
-                            init_rtt_probe.apply();
-                            meta.rtt_timestamp0 = ig_intr_md.ingress_mac_tstamp[31:0];
-                            hdr.rtt_probe.setValid();
-                            hdr.rtt_probe.rtt_type = 1;
-                            hdr.rtt_probe.pad0 = 0;
-                            hdr.rtt_probe.rtt_opt = RTT_OPT_ECHO;
-                        }
+        // generate feedback digest
+        if(hdr.feedback.isValid()) {
+            do_update_port_reg(hdr.feedback.egress_port);
+            ig_dprsr_md.digest_type = FEEDBACK_DIGEST;
+            meta.bypass = 1;
+            drop();
+        } 
+        else {
+            do_check_port_reg(ig_tm_md.ucast_egress_port);
+            if(meta.reg_result == 1) {
+                opt_nexthop.apply();
+            }
+        }
+
+        // Processing RTT probe packets in SrcToR or DstToR
+        if(meta.bypass == 0) {
+            if(device_type.apply().hit) {
+                meta.hash_10 = hash[9:0];
+
+                // SrcToR: 
+                if(meta.device_type == DEVICE_TYPE_SRC && !hdr.rtt_probe.isValid()) {
+                    read_rtt_interval_reg.apply();
+                    if(meta.gen_rtt_probe == 1) {
+                        init_rtt_probe.apply();
+                        meta.rtt_timestamp0 = ig_intr_md.ingress_mac_tstamp[31:0];
+                        hdr.rtt_probe.setValid();
+                        hdr.rtt_probe.rtt_type = 1;
+                        hdr.rtt_probe.pad0 = 0;
+                        hdr.rtt_probe.rtt_opt = RTT_OPT_ECHO;
                     }
+                }
 
-                    // DstToR
-                    else if(meta.device_type == DEVICE_TYPE_DST && hdr.rtt_probe.isValid()) {
-                        if(hdr.rtt_probe.rtt_type == 1) {
-                            if(hdr.rtt_probe.rtt_opt == RTT_OPT_REPLY) {
-                                bit<32> rtt_hash;
-                                calc_rtt_hash.apply(hdr, rtt_hash);
-                                meta.hash_10 = rtt_hash[9:0];
-                                
-                                read_rtt_reg.apply();
-                                meta.rtt_val = ig_intr_md.ingress_mac_tstamp[31:0] - meta.rtt_timestamp0;
-                                ig_dprsr_md.digest_type = RTT_DIGEST;
-                                meta.debug_val1 = 1;
-                                meta.debug_val2 = 2;
-                                drop();
-                            }
+                // DstToR
+                else if(meta.device_type == DEVICE_TYPE_DST && hdr.rtt_probe.isValid()) {
+                    if(hdr.rtt_probe.rtt_type == 1) {
+                        if(hdr.rtt_probe.rtt_opt == RTT_OPT_REPLY) {
+                            bit<32> rtt_hash;
+                            calc_rtt_hash.apply(hdr, rtt_hash);
+                            meta.hash_10 = rtt_hash[9:0];
                             
-                            if(hdr.rtt_probe.rtt_opt == RTT_OPT_ECHO) {
-                                // rtt_probe mirror
-                                ig_dprsr_md.mirror_type = MIRROR_TYPE_I2E;
-                                meta.pkt_type = PKT_TYPE_RTT_MIRROR;
-                                meta.rtt_mirror_session = (MirrorId_t)1;
+                            read_rtt_reg.apply();
+                            meta.rtt_val = ig_intr_md.ingress_mac_tstamp[31:0] - meta.rtt_timestamp0;
+                            ig_dprsr_md.digest_type = RTT_DIGEST;
+                            meta.debug_val1 = 1;
+                            meta.debug_val2 = 2;
+                            drop();
+                        }
+                        
+                        if(hdr.rtt_probe.rtt_opt == RTT_OPT_ECHO) {
+                            // rtt_probe mirror
+                            ig_dprsr_md.mirror_type = MIRROR_TYPE_I2E;
+                            meta.pkt_type = PKT_TYPE_RTT_MIRROR;
+                            meta.rtt_mirror_session = (MirrorId_t)1;
 
-                                hdr.rtt_probe.setInvalid();
-                            }
+                            hdr.rtt_probe.setInvalid();
                         }
                     }
                 }
